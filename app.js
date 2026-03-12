@@ -1,3 +1,5 @@
+const STORAGE_KEY = "rsu-cashflow-planner-v1";
+
 function toMoney(value) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -53,6 +55,55 @@ function parseVestRows() {
   });
 }
 
+function getScalarInputState() {
+  return {
+    baseSalary: document.getElementById("baseSalary").value,
+    baseSalaryTaxRate: document.getElementById("baseSalaryTaxRate").value,
+    desiredContribution: document.getElementById("desiredContribution").value,
+    preTaxReduction: document.getElementById("preTaxReduction").value
+  };
+}
+
+function applyScalarInputState(state) {
+  if (!state) return;
+  if (state.baseSalary !== undefined) document.getElementById("baseSalary").value = state.baseSalary;
+  if (state.baseSalaryTaxRate !== undefined) document.getElementById("baseSalaryTaxRate").value = state.baseSalaryTaxRate;
+  if (state.desiredContribution !== undefined) document.getElementById("desiredContribution").value = state.desiredContribution;
+  if (state.preTaxReduction !== undefined) document.getElementById("preTaxReduction").value = state.preTaxReduction;
+}
+
+function saveState() {
+  const vestEvents = parseVestRows().map(({ vestValue, cashSplit, rsuSplit, incomeTax }) => ({
+    vestValue,
+    cashSplit,
+    rsuSplit,
+    incomeTax
+  }));
+
+  const payload = {
+    ...getScalarInputState(),
+    vestEvents
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (_e) {
+    // Ignore persistence failures (private mode/storage limits).
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch (_e) {
+    return null;
+  }
+}
+
 function runSimulation() {
   const validationMsg = document.getElementById("validationMsg");
   const baseSalary = Number(document.getElementById("baseSalary").value);
@@ -64,11 +115,13 @@ function runSimulation() {
 
   if ([baseSalary, baseSalaryTaxRatePct, preTaxReductionInput, desiredContribution].some((n) => Number.isNaN(n))) {
     validationMsg.textContent = "Please enter valid numeric inputs for Sections 1 and 2.";
+    saveState();
     return;
   }
 
   if (vestInputs.length === 0) {
     validationMsg.textContent = "Add at least one vest event in Section 3.";
+    saveState();
     return;
   }
 
@@ -76,15 +129,18 @@ function runSimulation() {
     const numbers = [row.vestValue, row.cashSplit, row.rsuSplit, row.incomeTax];
     if (numbers.some((n) => Number.isNaN(n))) {
       validationMsg.textContent = `Vest event ${row.idx} has invalid numbers.`;
+      saveState();
       return;
     }
     if (Math.abs(row.cashSplit + row.rsuSplit - 100) > 0.001) {
       validationMsg.textContent = `Vest event ${row.idx}: cash % and RSU % must add to 100.`;
+      saveState();
       return;
     }
   }
 
   validationMsg.textContent = "";
+
   const baseSalaryTaxRate = baseSalaryTaxRatePct / 100;
   const taxableBaseSalary = Math.max(0, baseSalary - preTaxReduction);
   const baseSalaryTax = taxableBaseSalary * baseSalaryTaxRate;
@@ -149,14 +205,25 @@ function runSimulation() {
     `;
     breakdownBody.appendChild(tr);
   });
+
+  saveState();
 }
 
 function bootstrap() {
   const vestRows = document.getElementById("vestRows");
-  vestRows.appendChild(createVestRow());
+  const saved = loadState();
+
+  applyScalarInputState(saved);
+
+  if (saved?.vestEvents && Array.isArray(saved.vestEvents) && saved.vestEvents.length > 0) {
+    saved.vestEvents.forEach((event) => vestRows.appendChild(createVestRow(event)));
+  } else {
+    vestRows.appendChild(createVestRow());
+  }
 
   document.getElementById("addVestRow").addEventListener("click", () => {
     vestRows.appendChild(createVestRow({ vestValue: 75000, cashSplit: 30, rsuSplit: 70, incomeTax: 45 }));
+    runSimulation();
   });
 
   vestRows.addEventListener("click", (event) => {
@@ -166,11 +233,19 @@ function bootstrap() {
       const rows = vestRows.querySelectorAll("tr");
       if (rows.length > 1) {
         target.closest("tr")?.remove();
+        runSimulation();
       }
     }
   });
 
-  document.getElementById("runBtn").addEventListener("click", runSimulation);
+  document.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.matches("input")) {
+      runSimulation();
+    }
+  });
+
   runSimulation();
 }
 
