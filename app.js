@@ -19,6 +19,13 @@ function clamp(num, min, max) {
   return Math.min(Math.max(num, min), max);
 }
 
+const chartState = {
+  rows: [],
+  width: 0,
+  height: 0,
+  pad: null
+};
+
 function randn() {
   let u = 0;
   let v = 0;
@@ -94,7 +101,7 @@ function runMonteCarlo(years, annualContribution, meanReturnPct, volatilityPct, 
   return summary;
 }
 
-function drawGrowthChart(rows) {
+function drawGrowthChart(rows, hoverIndex = null) {
   const canvas = document.getElementById("growthChart");
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
@@ -107,28 +114,52 @@ function drawGrowthChart(rows) {
 
   const width = cssWidth;
   const height = cssHeight;
-  const pad = { top: 22, right: 18, bottom: 34, left: 58 };
+  const pad = { top: 28, right: 26, bottom: 56, left: 86 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
 
   const maxY = Math.max(...rows.map((row) => row.p90), 1);
+  const yTickMax = Math.ceil(maxY / 50000) * 50000 || 1;
   const xFor = (index) => pad.left + (index / (rows.length - 1 || 1)) * plotW;
-  const yFor = (value) => pad.top + (1 - value / maxY) * plotH;
+  const yFor = (value) => pad.top + (1 - value / yTickMax) * plotH;
 
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#fffef8";
   ctx.fillRect(0, 0, width, height);
 
+  // Horizontal Y ticks
+  const yTicks = 5;
+  ctx.fillStyle = "#64748b";
+  ctx.font = '12px "IBM Plex Mono", monospace';
+  ctx.textAlign = "right";
   ctx.strokeStyle = "#dbeafe";
   ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i += 1) {
-    const y = pad.top + (i / 4) * plotH;
+  for (let i = 0; i <= yTicks; i += 1) {
+    const y = pad.top + (i / yTicks) * plotH;
+    const value = yTickMax * (1 - i / yTicks);
     ctx.beginPath();
     ctx.moveTo(pad.left, y);
     ctx.lineTo(width - pad.right, y);
     ctx.stroke();
+    ctx.fillText(compactMoney(value), pad.left - 10, y + 4);
   }
 
+  // Vertical X ticks
+  const xTicks = Math.min(6, rows.length - 1);
+  ctx.textAlign = "center";
+  for (let i = 0; i <= xTicks; i += 1) {
+    const year = Math.round((i / xTicks) * (rows.length - 1));
+    const x = xFor(year);
+    ctx.strokeStyle = "#eef2ff";
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top);
+    ctx.lineTo(x, height - pad.bottom);
+    ctx.stroke();
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(`Y${year}`, x, height - pad.bottom + 20);
+  }
+
+  // Axes
   ctx.strokeStyle = "#94a3b8";
   ctx.beginPath();
   ctx.moveTo(pad.left, pad.top);
@@ -170,15 +201,96 @@ function drawGrowthChart(rows) {
   drawLine((row) => row.median, "#0f172a", 2.8);
   drawLine((row) => row.p90, "#f97316", 1.8);
 
+  // Axis labels
   ctx.fillStyle = "#475569";
   ctx.font = '12px "IBM Plex Mono", monospace';
-  ctx.textAlign = "right";
-  ctx.fillText("$0", pad.left - 8, height - pad.bottom + 4);
-  ctx.fillText(compactMoney(maxY), pad.left - 8, pad.top + 4);
-
   ctx.textAlign = "center";
-  ctx.fillText("Year 0", pad.left, height - 10);
-  ctx.fillText(`Year ${rows.length - 1}`, width - pad.right, height - 10);
+  ctx.fillText("Time (Years)", pad.left + plotW / 2, height - 14);
+  ctx.save();
+  ctx.translate(20, pad.top + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText("Portfolio Value (USD)", 0, 0);
+  ctx.restore();
+
+  if (hoverIndex !== null && hoverIndex >= 0 && hoverIndex < rows.length) {
+    const row = rows[hoverIndex];
+    const x = xFor(hoverIndex);
+    const yMedian = yFor(row.median);
+
+    ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top);
+    ctx.lineTo(x, height - pad.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.arc(x, yMedian, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  chartState.rows = rows;
+  chartState.width = width;
+  chartState.height = height;
+  chartState.pad = pad;
+}
+
+function showChartTooltip(hoverIndex, clientX, clientY) {
+  const tooltip = document.getElementById("chartTooltip");
+  const frame = document.querySelector(".chart-frame");
+  const row = chartState.rows[hoverIndex];
+  if (!tooltip || !frame || !row) return;
+
+  tooltip.hidden = false;
+  tooltip.innerHTML = `Year ${row.year}<br>Median: ${toMoney(row.median)}<br>P10: ${toMoney(row.p10)}<br>P90: ${toMoney(row.p90)}`;
+
+  const frameRect = frame.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const offsetX = 14;
+  const offsetY = 14;
+
+  let left = clientX - frameRect.left + offsetX;
+  let top = clientY - frameRect.top + offsetY;
+
+  if (left + tooltipRect.width > frameRect.width - 8) {
+    left = clientX - frameRect.left - tooltipRect.width - 10;
+  }
+  if (top + tooltipRect.height > frameRect.height - 8) {
+    top = frameRect.height - tooltipRect.height - 8;
+  }
+  left = Math.max(8, left);
+  top = Math.max(8, top);
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function handleChartHover(event) {
+  if (!chartState.rows.length || !chartState.pad) return;
+  const canvas = document.getElementById("growthChart");
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const { pad, width } = chartState;
+  const plotW = width - pad.left - pad.right;
+
+  if (x < pad.left || x > width - pad.right) {
+    hideChartTooltip();
+    drawGrowthChart(chartState.rows);
+    return;
+  }
+
+  const frac = (x - pad.left) / plotW;
+  const index = clamp(Math.round(frac * (chartState.rows.length - 1)), 0, chartState.rows.length - 1);
+  drawGrowthChart(chartState.rows, index);
+  showChartTooltip(index, event.clientX, event.clientY);
+}
+
+function hideChartTooltip() {
+  const tooltip = document.getElementById("chartTooltip");
+  if (tooltip) tooltip.hidden = true;
+  if (chartState.rows.length) drawGrowthChart(chartState.rows);
 }
 
 function createVestRow(defaults = {}) {
@@ -324,6 +436,7 @@ function runSimulation() {
 
 function bootstrap() {
   const vestRows = document.getElementById("vestRows");
+  const canvas = document.getElementById("growthChart");
   vestRows.appendChild(createVestRow());
 
   document.getElementById("addVestRow").addEventListener("click", () => {
@@ -343,6 +456,8 @@ function bootstrap() {
 
   document.getElementById("runBtn").addEventListener("click", runSimulation);
   window.addEventListener("resize", runSimulation);
+  canvas.addEventListener("mousemove", handleChartHover);
+  canvas.addEventListener("mouseleave", hideChartTooltip);
   runSimulation();
 }
 

@@ -137,7 +137,10 @@
         <p class="chart-intro">
           Uses annual contribution from Section 2 with your expected return and variance.
         </p>
-        <canvas id="growthChart" width="960" height="420" aria-label="Section 2 growth chart"></canvas>
+        <div class="chart-frame">
+          <canvas id="growthChart" width="960" height="420" aria-label="Section 2 growth chart"></canvas>
+          <div id="chartTooltip" class="chart-tooltip" hidden></div>
+        </div>
         <div class="legend" aria-hidden="true">
           <span><i class="dot total"></i>Median</span>
           <span><i class="dot cash"></i>P10</span>
