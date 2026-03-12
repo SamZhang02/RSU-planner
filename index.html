@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RSU + Cash Flow Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">RSU Calculator</p>
+        <h1>3-Section Cash + RSU Planner</h1>
+        <p class="subhead">
+          Section 3 computes RSU tax sells first. Then Section 1 cash flow is adjusted, and Section 2 projects
+          non-RSU investing with growth and variance.
+        </p>
+      </header>
+
+      <section class="panel" aria-label="Section 1 total cash flow to invest">
+        <h2>1) Total Cash Flow to Invest</h2>
+        <div class="grid">
+          <label>
+            Annual Base Cash Flow Allowance
+            <input id="annualCashFlow" type="number" min="0" step="1000" value="90000" />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Section 2 non-rsu investment settings">
+        <h2>2) Money to Invest Outside RSU</h2>
+        <div class="grid">
+          <label>
+            Projection Years
+            <input id="projectionYears" type="number" min="1" max="40" step="1" value="10" />
+          </label>
+
+          <label>
+            Expected Annual Growth (%)
+            <input id="section2Return" type="number" min="-50" max="50" step="0.1" value="6" />
+          </label>
+
+          <label>
+            Annual Variance / Volatility (%)
+            <input id="section2Volatility" type="number" min="0" max="100" step="0.1" value="12" />
+          </label>
+
+          <label>
+            Desired Outside-RSU Contribution (Annual)
+            <input id="desiredContribution" type="number" min="0" step="1000" value="60000" />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Section 3 rsu vest events">
+        <h2>3) RSU Vest Events</h2>
+        <p class="chart-intro">
+          Enter one row per vest event. Cash split + RSU split must equal 100 for each row.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Vest Value</th>
+                <th>Cash %</th>
+                <th>RSU %</th>
+                <th>Income Tax %</th>
+                <th>Cap Gains % (on RSU sold)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="vestRows"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button id="addVestRow" type="button">Add Vest Event</button>
+          <button id="runBtn" type="button">Run Simulation</button>
+        </div>
+        <p id="validationMsg" class="validation" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-label="Section summaries">
+        <h2>Results by Section</h2>
+        <div class="chart-summary">
+          <article>
+            <h3>Section 1 Adjusted Cash Flow</h3>
+            <p id="outSection1Cash">$0.00</p>
+            <small id="outSection1Note"></small>
+          </article>
+          <article>
+            <h3>Section 2 Annual Investable Amount</h3>
+            <p id="outSection2Contribution">$0.00</p>
+            <small>Computed from Section 1 plus net vest cash, minus uncovered tax draws.</small>
+          </article>
+          <article>
+            <h3>Section 3 Net RSU Retained</h3>
+            <p id="outSection3Rsu">$0.00</p>
+            <small id="outSection3Note"></small>
+          </article>
+          <article>
+            <h3>Gap to Desired Contribution</h3>
+            <p id="outDesiredGap">$0.00</p>
+            <small id="outDesiredGapNote"></small>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Vest breakdown">
+        <h2>Vest Tax Breakdown</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Tax Owed</th>
+                <th>Cash from Split</th>
+                <th>Shortfall</th>
+                <th>RSU Sold</th>
+                <th>Cap Gains Tax</th>
+                <th>Out-of-Pocket Draw</th>
+                <th>RSU Kept</th>
+              </tr>
+            </thead>
+            <tbody id="breakdownRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel growth" aria-label="Section 2 growth chart">
+        <h2>Section 2 Growth Projection (Monte Carlo)</h2>
+        <p class="chart-intro">
+          Uses annual contribution from Section 2 with your expected return and variance.
+        </p>
+        <canvas id="growthChart" width="960" height="420" aria-label="Section 2 growth chart"></canvas>
+        <div class="legend" aria-hidden="true">
+          <span><i class="dot total"></i>Median</span>
+          <span><i class="dot cash"></i>P10</span>
+          <span><i class="dot rsu"></i>P90</span>
+        </div>
+        <div class="chart-summary">
+          <article>
+            <h3>Year <span id="outEndYear">0</span> P10</h3>
+            <p id="outEndP10">$0.00</p>
+          </article>
+          <article>
+            <h3>Year <span id="outEndYear2">0</span> Median</h3>
+            <p id="outEndMedian">$0.00</p>
+          </article>
+          <article>
+            <h3>Year <span id="outEndYear3">0</span> P90</h3>
+            <p id="outEndP90">$0.00</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
