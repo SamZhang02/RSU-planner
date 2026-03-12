@@ -55,11 +55,14 @@ function parseVestRows() {
 
 function runSimulation() {
   const validationMsg = document.getElementById("validationMsg");
-  const annualCashFlow = Number(document.getElementById("annualCashFlow").value);
+  const baseSalary = Number(document.getElementById("baseSalary").value);
+  const baseSalaryTaxRatePct = Number(document.getElementById("baseSalaryTaxRate").value);
+  const preTaxReductionInput = Number(document.getElementById("preTaxReduction").value);
+  const preTaxReduction = Math.max(0, preTaxReductionInput);
   const desiredContribution = Math.max(0, Number(document.getElementById("desiredContribution").value));
   const vestInputs = parseVestRows();
 
-  if ([annualCashFlow, desiredContribution].some((n) => Number.isNaN(n))) {
+  if ([baseSalary, baseSalaryTaxRatePct, preTaxReductionInput, desiredContribution].some((n) => Number.isNaN(n))) {
     validationMsg.textContent = "Please enter valid numeric inputs for Sections 1 and 2.";
     return;
   }
@@ -82,6 +85,10 @@ function runSimulation() {
   }
 
   validationMsg.textContent = "";
+  const baseSalaryTaxRate = baseSalaryTaxRatePct / 100;
+  const taxableBaseSalary = Math.max(0, baseSalary - preTaxReduction);
+  const baseSalaryTax = taxableBaseSalary * baseSalaryTaxRate;
+  const baseSalaryNetCash = baseSalary - preTaxReduction - baseSalaryTax;
 
   const settledRows = vestInputs.map((row) => ({
     ...row,
@@ -98,10 +105,9 @@ function runSimulation() {
     { netVestCash: 0, outOfPocket: 0, rsuKept: 0 }
   );
 
-  const adjustedCashFlow = annualCashFlow + totals.netVestCash - totals.outOfPocket;
-  const annualContribution = Math.max(0, adjustedCashFlow);
-  const extraCashNeeded = Math.max(0, desiredContribution - adjustedCashFlow);
-  const desiredGap = Math.max(0, desiredContribution - annualContribution);
+  const adjustedCashFlow = baseSalaryNetCash + totals.netVestCash - totals.outOfPocket;
+  const annualContribution = preTaxReduction + Math.max(0, adjustedCashFlow);
+  const desiredGap = annualContribution - desiredContribution;
 
   document.getElementById("outSection1Cash").textContent = toMoney(adjustedCashFlow);
   document.getElementById("outSection2Contribution").textContent = toMoney(annualContribution);
@@ -110,7 +116,7 @@ function runSimulation() {
 
   const section1Note = document.getElementById("outSection1Note");
   section1Note.className = adjustedCashFlow >= 0 ? "good" : "warn";
-  section1Note.textContent = `Base cash flow ${toMoney(annualCashFlow)} + net vest cash ${toMoney(totals.netVestCash)} - uncovered tax ${toMoney(totals.outOfPocket)}.${
+  section1Note.textContent = `Base salary net cash ${toMoney(baseSalaryNetCash)} from ${toMoney(baseSalary)} with ${toMoney(preTaxReduction)} pre-tax reduction, taxed on ${toMoney(taxableBaseSalary)} at ${baseSalaryTaxRatePct.toFixed(1)}% (${toMoney(baseSalaryTax)} tax) + net vest cash ${toMoney(totals.netVestCash)} - uncovered vest tax ${toMoney(totals.outOfPocket)}.${
     adjustedCashFlow < 0 ? " Contribution is capped at $0.00 until allowance is positive." : ""
   }`;
 
@@ -118,10 +124,14 @@ function runSimulation() {
 
   const desiredGapNote = document.getElementById("outDesiredGapNote");
   if (desiredGap === 0) {
-    desiredGapNote.textContent = "On track. Current annual contribution meets or exceeds your desired target.";
+    desiredGapNote.textContent = "No day-to-day leftover after hitting your investment target.";
+    desiredGapNote.className = "good";
+  } else if (desiredGap > 0) {
+    desiredGapNote.textContent = `You have ${toMoney(desiredGap)} per year (${toMoney(desiredGap / 12)} per month) available for day-to-day spending after investing ${toMoney(desiredContribution)}. This includes ${toMoney(preTaxReduction)} of pre-tax investing.`;
     desiredGapNote.className = "good";
   } else {
-    desiredGapNote.textContent = `Need ${toMoney(extraCashNeeded)} more annual cash flow (${toMoney(extraCashNeeded / 12)} per month) to reach desired contribution of ${toMoney(desiredContribution)}.`;
+    const shortfall = Math.abs(desiredGap);
+    desiredGapNote.textContent = `You are short ${toMoney(shortfall)} per year (${toMoney(shortfall / 12)} per month) to both fund day-to-day spending at $0 leftover and invest ${toMoney(desiredContribution)}. This includes ${toMoney(preTaxReduction)} of pre-tax investing.`;
     desiredGapNote.className = "warn";
   }
 

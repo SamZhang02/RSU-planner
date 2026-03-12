@@ -27,8 +27,12 @@
         <h2>1) Total Cash Flow to Invest</h2>
         <div class="grid">
           <label>
-            Annual Base Cash Flow Allowance
-            <input id="annualCashFlow" type="number" min="0" step="1000" value="90000" />
+            Annual Total Base Salary
+            <input id="baseSalary" type="number" min="0" step="1000" value="180000" />
+          </label>
+          <label>
+            Average Income Tax on Base Salary (%)
+            <input id="baseSalaryTaxRate" type="number" min="0" max="100" step="0.1" value="35" />
           </label>
         </div>
       </section>
@@ -39,6 +43,10 @@
           <label>
             Desired Outside-RSU Contribution (Annual)
             <input id="desiredContribution" type="number" min="0" step="1000" value="60000" />
+          </label>
+          <label>
+            How much of those reduce taxable income?
+            <input id="preTaxReduction" type="number" min="0" step="500" value="0" />
           </label>
         </div>
       </section>
@@ -73,7 +81,7 @@
         <h2>Results by Section</h2>
         <div class="chart-summary">
           <article>
-            <h3>Section 1 Adjusted Cash Flow</h3>
+            <h3>Section 1 Adjusted Cash Flow (Net)</h3>
             <p id="outSection1Cash">$0.00</p>
             <small id="outSection1Note"></small>
           </article>
@@ -88,7 +96,7 @@
             <small id="outSection3Note"></small>
           </article>
           <article>
-            <h3>Gap to Desired Contribution</h3>
+            <h3>Day-to-Day Cash After Investing Target</h3>
             <p id="outDesiredGap">$0.00</p>
             <small id="outDesiredGapNote"></small>
           </article>
