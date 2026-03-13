@@ -79,25 +79,30 @@
       <section class="panel" aria-label="Section summaries">
         <h2>Results by Section</h2>
         <div class="chart-summary">
-          <article>
+          <article class="result-card">
             <h3>Section 1 Adjusted Cash Flow (Net)</h3>
             <p id="outSection1Cash">$0.00</p>
             <small id="outSection1Note"></small>
           </article>
-          <article>
-            <h3>Section 2 Annual Investable Amount</h3>
+          <article class="result-card">
+            <h3>Section 2 Actual Outside-RSU Invested</h3>
             <p id="outSection2Contribution">$0.00</p>
-            <small>Computed from Section 1 plus net vest cash, minus uncovered tax draws.</small>
+            <small>Invested amount used for savings: min(desired contribution, available to invest).</small>
           </article>
-          <article>
+          <article class="result-card">
             <h3>Section 3 Net RSU Retained</h3>
             <p id="outSection3Rsu">$0.00</p>
             <small id="outSection3Note"></small>
           </article>
-          <article>
+          <article class="result-card result-day">
             <h3>Day-to-Day Cash After Investing Target</h3>
             <p id="outDesiredGap">$0.00</p>
             <small id="outDesiredGapNote"></small>
+          </article>
+          <article class="result-card result-total">
+            <h3>Total Saved (RSU + Invested)</h3>
+            <p id="outTotalSaved">$0.00</p>
+            <small>Section 3 RSU retained + Section 2 actual invested amount.</small>
           </article>
         </div>
       </section>

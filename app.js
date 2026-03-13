@@ -162,13 +162,16 @@ function runSimulation() {
   );
 
   const adjustedCashFlow = baseSalaryNetCash + totals.netVestCash - totals.outOfPocket;
-  const annualContribution = preTaxReduction + Math.max(0, adjustedCashFlow);
-  const desiredGap = annualContribution - desiredContribution;
+  const availableToInvest = preTaxReduction + Math.max(0, adjustedCashFlow);
+  const actualInvestedOutsideRsu = Math.max(0, Math.min(desiredContribution, availableToInvest));
+  const desiredGap = availableToInvest - desiredContribution;
+  const totalSaved = actualInvestedOutsideRsu + totals.rsuKept;
 
   document.getElementById("outSection1Cash").textContent = toMoney(adjustedCashFlow);
-  document.getElementById("outSection2Contribution").textContent = toMoney(annualContribution);
+  document.getElementById("outSection2Contribution").textContent = toMoney(actualInvestedOutsideRsu);
   document.getElementById("outSection3Rsu").textContent = toMoney(totals.rsuKept);
   document.getElementById("outDesiredGap").textContent = toMoney(desiredGap);
+  document.getElementById("outTotalSaved").textContent = toMoney(totalSaved);
 
   const section1Note = document.getElementById("outSection1Note");
   section1Note.className = adjustedCashFlow >= 0 ? "good" : "warn";
